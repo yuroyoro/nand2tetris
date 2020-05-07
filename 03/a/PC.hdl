@@ -16,5 +16,27 @@ CHIP PC {
     OUT out[16];
 
     PARTS:
-    // Put your code here:
+      // increments previous output
+      Inc16(in=loop, out=winc);
+
+      // a) previous value = otherwise
+      // b) reset value    = reset && !inc  && !load
+      // c) load value     = load  && !inc  && !reset
+      // d) increment      = inc   && !load && !reset
+
+      // inc
+      Mux(a=false, b=true, sel=inc, out=is0);
+      Mux(a=false, b=true, sel=inc, out=is1);
+      // load
+      Mux(a=is0, b=false, sel=load, out=ls0);
+      Mux(a=is1, b=true,  sel=load, out=ls1);
+      // reset
+      Mux(a=ls0, b=true,  sel=reset, out=sel0);
+      Mux(a=ls1, b=false, sel=reset, out=sel1);
+
+      Mux4Way16(a=loop, b=false, c=in, d=winc, sel[0]=sel0, sel[1]=sel1, out=w);
+
+      // store value into register
+      Register(in=w, load=true, out=loop, out=out);
+
 }
