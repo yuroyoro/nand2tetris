@@ -19,15 +19,15 @@ use std::io::Write;
 fn main() {
     // get filename or directory from args
     let arg = get_first_arg();
+    let vm_name = get_vm_name(&arg);
 
     let sources = read_sources(&arg).unwrap_or_else(|err| {
         println!("cannot read file: {}", err);
         process::exit(1);
     });
 
-    let (commands, errors): (Vec<_>, Vec<_>) = sources.map(|src| parse(&src)).unzip();
-    let commands: Vec<Command> = commands.into_iter().flatten().collect();
-    let errors: Vec<anyhow::Error> = errors.into_iter().flatten().collect();
+    let results: Vec<ParseResult> = sources.map(|src| parse(&src.code, &src.vm_name)).collect();
+    let errors: Vec<&anyhow::Error> = results.iter().map(|res| &res.errors).flatten().collect();
 
     if !errors.is_empty() {
         println!("parse error: ");
@@ -35,14 +35,15 @@ fn main() {
         process::exit(1);
     }
 
-    println!("Commands: ");
-    commands.iter().for_each(|cmd| println!("  {:?}", cmd));
-
     // generate code
-    let asm = generate(commands);
+    let asm = results
+        .into_iter()
+        .map(|res| generate(&res.vm_name, res.commands))
+        .collect::<Vec<String>>()
+        .join("\n\n");
 
     // write to file
-    write_asm(&arg, &asm);
+    write_asm(&vm_name, &asm);
 
     println!("Asm:");
     println!("{}", &asm);
@@ -58,12 +59,16 @@ fn get_first_arg() -> String {
     String::from(name)
 }
 
-fn write_asm(filename: &str, asm: &str) {
-    let filename = if filename.ends_with(".vm") {
-        filename.replace(".vm", ".asm")
+fn get_vm_name(filename: &str) -> String {
+    if filename.ends_with(".vm") {
+        filename.replace(".vm", "")
     } else {
         format!("{}.asm", filename.strip_suffix("/").unwrap_or(filename))
-    };
+    }
+}
+
+fn write_asm(vm_name: &str, asm: &str) {
+    let filename = format!("{}.asm", vm_name);
 
     File::create(&filename)
         .unwrap_or_else(|err| {

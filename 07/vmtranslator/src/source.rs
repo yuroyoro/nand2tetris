@@ -3,7 +3,13 @@ use anyhow::Result;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
+use std::path::Path;
 use std::process;
+
+pub struct Source {
+    pub code: String,
+    pub vm_name: String,
+}
 
 pub struct SourceIter {
     underlying: std::vec::IntoIter<String>,
@@ -18,9 +24,9 @@ impl SourceIter {
 }
 
 impl Iterator for SourceIter {
-    type Item = String;
+    type Item = Source;
 
-    fn next(&mut self) -> Option<String> {
+    fn next(&mut self) -> Option<Source> {
         self.underlying.next().map(|name| read_source(&name))
     }
 }
@@ -63,19 +69,29 @@ fn vm_file(filename: &str) -> Option<String> {
     }
 }
 
-fn read_source(filename: &str) -> String {
+fn read_source(filename: &str) -> Source {
+    let vm_name = Path::new(filename)
+        .file_name()
+        .unwrap_or_else(|| {
+            println!("invalid filename: {}", filename);
+            process::exit(1);
+        })
+        .to_string_lossy()
+        .into_owned()
+        .replace(".vm", "");
+
     // read file
-    let mut contents = String::new();
+    let mut code = String::new();
     File::open(filename)
         .unwrap_or_else(|err| {
             println!("cannot read file: {}", err);
             process::exit(1);
         })
-        .read_to_string(&mut contents)
+        .read_to_string(&mut code)
         .unwrap_or_else(|err| {
             println!("cannot read file: {}", err);
             process::exit(1);
         });
 
-    contents
+    Source { code, vm_name }
 }

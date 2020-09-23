@@ -1,5 +1,11 @@
 use anyhow::{anyhow, Result};
 
+pub struct ParseResult {
+    pub commands: Vec<Command>,
+    pub errors: Vec<anyhow::Error>,
+    pub vm_name: String,
+}
+
 #[derive(Debug, Clone)]
 pub enum Command {
     // arithmetic commands
@@ -39,24 +45,23 @@ pub enum Segment {
 
 #[derive(Debug, Clone)]
 pub struct Source {
+    pub vm_name: String,
     pub line: usize,  // line number in source file
     pub code: String, // original source code
 }
 
-pub type ParseResult = (Vec<Command>, Vec<anyhow::Error>);
-
 const COMMENT: &'static str = "//";
 
-pub fn parse(content: &str) -> ParseResult {
-    let sources = parse_lines(content);
-    parse_sources(sources)
+pub fn parse(content: &str, vm_name: &str) -> ParseResult {
+    let sources = parse_lines(content, vm_name);
+    parse_sources(sources, vm_name)
 }
 
-fn parse_lines(contents: &str) -> Vec<Source> {
+fn parse_lines(contents: &str, vm_name: &str) -> Vec<Source> {
     contents
         .lines()
         .enumerate()
-        .filter_map(|(line, content)| build_source(content, line))
+        .filter_map(|(line, content)| build_source(content, line, vm_name))
         .collect()
 }
 
@@ -67,13 +72,14 @@ fn drop_whitespaces(content: &str) -> String {
         .collect::<String>()
 }
 
-fn build_source(content: &str, line: usize) -> Option<Source> {
+fn build_source(content: &str, line: usize, vm_name: &str) -> Option<Source> {
     // drop whitespace
     let code = drop_whitespaces(content);
     let code = code.splitn(2, COMMENT).next().unwrap_or("");
 
     if code.len() > 0 {
         Some(Source {
+            vm_name: vm_name.to_string(),
             line: line + 1,
             code: String::from(code),
         })
@@ -82,7 +88,8 @@ fn build_source(content: &str, line: usize) -> Option<Source> {
     }
 }
 
-fn parse_sources(sources: Vec<Source>) -> ParseResult {
+fn parse_sources(sources: Vec<Source>, vm_name: &str) -> ParseResult {
+    let vm_name = vm_name.to_string();
     let mut commands = Vec::new();
     let mut errors = Vec::new();
 
@@ -93,7 +100,11 @@ fn parse_sources(sources: Vec<Source>) -> ParseResult {
         };
     });
 
-    (commands, errors)
+    ParseResult {
+        commands,
+        errors,
+        vm_name,
+    }
 }
 
 fn instrument(source: Source) -> Result<Command> {
@@ -208,7 +219,16 @@ fn validate_index(source: &Source, segment: &Segment, index: i64) -> Result<i64>
 
     if index > 7 && *segment == Segment::Temp {
         return Err(anyhow!(
-            "{:?} : illegal segment index, temp index must be less than 2 : {:?}, {}",
+            "{:?} : illegal segment index, temp index must be less than 7 : {:?}, {}",
+            &source,
+            segment,
+            index
+        ));
+    }
+
+    if index > 255 && *segment == Segment::Static {
+        return Err(anyhow!(
+            "{:?} : illegal segment index, static index must be less than 255 : {:?}, {}",
             &source,
             segment,
             index
