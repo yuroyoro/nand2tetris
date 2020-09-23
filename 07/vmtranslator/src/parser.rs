@@ -25,7 +25,7 @@ pub enum Command {
     // Return
 }
 
-#[derive(Debug, Clone, enum_utils::FromStr)]
+#[derive(Debug, Clone, PartialEq, enum_utils::FromStr)]
 pub enum Segment {
     Argument,
     Local,
@@ -133,7 +133,7 @@ fn parse_memmory_command(
 ) -> Option<Result<Command>> {
     let segment = iter
         .next()
-        .map(|seg| parse_segment(seg))
+        .map(|seg| parse_segment(&source, seg))
         .unwrap_or(Err(anyhow!("{:?} : expected segment but empty", &source)));
 
     let segment = match segment {
@@ -143,7 +143,7 @@ fn parse_memmory_command(
 
     let index = iter
         .next()
-        .map(|idx| parse_index(idx))
+        .map(|idx| parse_index(&source, &segment, idx))
         .unwrap_or(Err(anyhow!("{:?} : expected segment but empty", &source)));
 
     let index = match index {
@@ -153,7 +153,16 @@ fn parse_memmory_command(
 
     match cmd {
         "push" => Some(Ok(Command::Push(segment, index))),
-        "pop" => Some(Ok(Command::Pop(segment, index))),
+        "pop" => {
+            if segment == Segment::Constant {
+                Some(Err(anyhow!(
+                    "{:?} : can not pop to constant segment",
+                    &source
+                )))
+            } else {
+                Some(Ok(Command::Pop(segment, index)))
+            }
+        }
         _ => None,
     }
 }
@@ -163,16 +172,48 @@ fn to_uppercase_first_char(s: &str) -> String {
     format!("{}{}", head.to_uppercase(), tail)
 }
 
-fn parse_segment(segment: &str) -> Result<Segment> {
+fn parse_segment(source: &Source, segment: &str) -> Result<Segment> {
     let segment = to_uppercase_first_char(segment);
 
     segment
         .parse::<Segment>()
-        .map_err(|()| anyhow!("invalid segment: {}", segment))
+        .map_err(|()| anyhow!("{:?} : invalid segment: {}", source, segment))
 }
 
-fn parse_index(index: &str) -> Result<i64> {
+fn parse_index(source: &Source, segment: &Segment, index: &str) -> Result<i64> {
     index
         .parse::<i64>()
-        .map_err(|err| anyhow!("invalid index: {}, {}", index, err))
+        .map_err(|err| anyhow!("{:?} : invalid index: {}, {}", source, index, err))
+        .and_then(|idx| validate_index(source, segment, idx))
+}
+
+fn validate_index(source: &Source, segment: &Segment, index: i64) -> Result<i64> {
+    if index < 0 && *segment != Segment::Constant {
+        return Err(anyhow!(
+            "{:?} : illegal segment index, index must be zero or poisitive : {:?}, {}",
+            &source,
+            segment,
+            index
+        ));
+    }
+
+    if index > 2 && *segment == Segment::Pointer {
+        return Err(anyhow!(
+            "{:?} : illegal segment index, pointer index must be less than 2 : {:?}, {}",
+            &source,
+            segment,
+            index
+        ));
+    }
+
+    if index > 7 && *segment == Segment::Temp {
+        return Err(anyhow!(
+            "{:?} : illegal segment index, temp index must be less than 2 : {:?}, {}",
+            &source,
+            segment,
+            index
+        ));
+    }
+
+    Ok(index)
 }

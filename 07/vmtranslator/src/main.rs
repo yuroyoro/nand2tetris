@@ -59,19 +59,21 @@ fn get_first_arg() -> String {
 }
 
 fn write_asm(filename: &str, asm: &str) {
-    let names = filename.rsplitn(2, ".").collect::<Vec<&str>>();
-    if let [_ext, name] = &*names {
-        let filename = format!("{}.asm", name);
-        File::create(&filename)
-            .unwrap_or_else(|err| {
-                println!("cannot open file: {}", err);
-                process::exit(1);
-            })
-            .write_all(asm.as_bytes())
-            .unwrap_or_else(|err| {
-                println!("cannot write file: {}", err);
-                process::exit(1);
-            });
-        println!("write asm to {}", &filename);
-    }
+    let filename = if filename.ends_with(".vm") {
+        filename.replace(".vm", ".asm")
+    } else {
+        format!("{}.asm", filename.strip_suffix("/").unwrap_or(filename))
+    };
+
+    File::create(&filename)
+        .unwrap_or_else(|err| {
+            println!("cannot open file: {}", err);
+            process::exit(1);
+        })
+        .write_all(asm.as_bytes())
+        .unwrap_or_else(|err| {
+            println!("cannot write file: {}", err);
+            process::exit(1);
+        });
+    println!("write asm to {}", &filename);
 }
