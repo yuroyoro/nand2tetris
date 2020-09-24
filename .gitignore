@@ -1,4 +1,4 @@
-06/hackasm/target
-07/vmtranslator/target
+hackasm/target
+vmtranslator/target
 07/**/*.asm
 07/**/*.out
