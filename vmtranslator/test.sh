@@ -1,72 +1,49 @@
 #!/bin/bash
 BASE=/Users/ozaki/dev/nand2tetris
 PROJECT="${BASE}/projects"
-CHAPTOR="${PROJECT}/07"
 CPU_EMULATOR="${BASE}/tools/CPUEmulator.sh"
 
-echo "----------------------------------------------------------------------"
-echo "Compile ${CHAPTOR}/StackArithmetic/SimpleAdd/SimpleAdd.vm"
-cargo run "${CHAPTOR}/StackArithmetic/SimpleAdd/SimpleAdd.vm" > /dev/null
+RESULT=()
 
-echo ""
+run() {
+  local dir=$(echo "$1" | sed 's/ *$//')
+  local name=$(basename $dir)
 
-echo "Run test ${CHAPTOR}/StackArithmetic/SimpleAdd/SimpleAdd.tst"
-RESULT1=$($CPU_EMULATOR "${CHAPTOR}/StackArithmetic/SimpleAdd/SimpleAdd.tst")
-echo $RESULT1
+  echo "----------------------------------------------------------------------"
+  echo "Compile ${dir}/${name}.vm"
+  compile_out=$(cargo run "${PROJECT}/${dir}/${name}.vm" 2>&1)
 
-echo ""
+  local status=$?
+  if [ $status -ne 0 ]; then
+    echo $compile_out
+    exit $status
+  fi
 
-echo "----------------------------------------------------------------------"
-echo "Compile ${CHAPTOR}/StackArithmetic/StackTest/StackTest.vm"
-cargo run "${CHAPTOR}/StackArithmetic/StackTest/StackTest.vm" > /dev/null
+  local res="Pass"
 
-echo ""
+  echo "Run Test ${dir}/${name}.vm"
+  test_out=$($CPU_EMULATOR "${PROJECT}/${dir}/${name}.tst")
+  if [ $? -ne 0 ]; then
+    res="Fail"
+  fi
 
-echo "Run test ${CHAPTOR}/StackArithmetic/StackTest/StackTest.tst"
-RESULT2=$($CPU_EMULATOR "${CHAPTOR}/StackArithmetic/StackTest/StackTest.tst")
-echo $RESULT2
+  RESULT+=("[${res}] $1 : ${test_out}")
+}
 
-echo ""
-
-echo "----------------------------------------------------------------------"
-echo "Compile ${CHAPTOR}/MemoryAccess/BasicTest/BasicTest.vm"
-cargo run "${CHAPTOR}/MemoryAccess/BasicTest/BasicTest.vm" > /dev/null
-
-echo ""
-
-echo "Run test ${CHAPTOR}/MemoryAccess/BasicTest/BasicTest.tst"
-RESULT3=$($CPU_EMULATOR "${CHAPTOR}/MemoryAccess/BasicTest/BasicTest.tst")
-echo $RESULT3
-
-echo ""
-
-echo "----------------------------------------------------------------------"
-echo "Compile ${CHAPTOR}/MemoryAccess/PointerTest/PointerTest.vm"
-cargo run "${CHAPTOR}/MemoryAccess/PointerTest/PointerTest.vm" > /dev/null
-
-echo ""
-
-echo "Run test ${CHAPTOR}/MemoryAccess/PointerTest/PointerTest.tst"
-RESULT4=$($CPU_EMULATOR "${CHAPTOR}/MemoryAccess/PointerTest/PointerTest.tst")
-echo $RESULT4
-
-echo ""
+run "07/StackArithmetic/SimpleAdd     "
+run "07/StackArithmetic/StackTest     "
+run "07/MemoryAccess/BasicTest        "
+run "07/MemoryAccess/PointerTest      "
+run "07/MemoryAccess/StaticTest       "
+run "07/MemoryAccess/StaticTest       "
+run "08/ProgramFlow/BasicLoop         "
+run "08/ProgramFlow/FibonacciSeries   "
+# run "08/FunctionCalls/SimpleFunction  "
+# run "08/FunctionCalls/NestedCall      "
+# run "08/FunctionCalls/FibonacciElement"
+# run "08/FunctionCalls/StaticTest      "
 
 echo "----------------------------------------------------------------------"
-echo "Compile ${CHAPTOR}/MemoryAccess/StaticTest/StaticTest.vm"
-cargo run "${CHAPTOR}/MemoryAccess/StaticTest/StaticTest.vm" > /dev/null
-
-echo ""
-
-echo "Run test ${CHAPTOR}/MemoryAccess/StaticTest/StaticTest.tst"
-RESULT5=$($CPU_EMULATOR "${CHAPTOR}/MemoryAccess/StaticTest/StaticTest.tst")
-echo $RESULT5
-
-echo ""
-
+IFS=$'\n'
+echo "${RESULT[*]}"
 echo "----------------------------------------------------------------------"
-echo "StackArithmetic/SimpleAdd : ${RESULT1}"
-echo "StackArithmetic/StackTest : ${RESULT2}"
-echo "MemoryAccess/BasicTest    : ${RESULT3}"
-echo "MemoryAccess/PointerTest  : ${RESULT4}"
-echo "MemoryAccess/StaticTest   : ${RESULT5}"

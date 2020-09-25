@@ -2,3 +2,5 @@ hackasm/target
 vmtranslator/target
 07/**/*.asm
 07/**/*.out
+08/**/*.asm
+08/**/*.out

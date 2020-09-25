@@ -1,30 +1,33 @@
-use crate::codegen::stack::*;
+use crate::codegen::stack::gen_stack_pop;
 use crate::codegen::LabelTable;
+use crate::parser::Source;
 
-pub fn gen_cmd_add() -> String {
-    let pop = gen_stack_pop();
+use anyhow::Result;
+
+pub fn gen_add(source: Source) -> Result<String> {
+    let pop = gen_stack_pop()?;
     let asm = r#"@SP    // replace stack top by D+M
 A=M-1
 M=D+M"#;
 
-    format!("// add\n{}\n{}", pop, asm)
+    Ok(format!("// add\n{}\n{}", pop, asm))
 }
 
-pub fn gen_cmd_sub() -> String {
-    let pop = gen_stack_pop();
+pub fn gen_sub(source: Source) -> Result<String> {
+    let pop = gen_stack_pop()?;
     let asm = r#"@SP    // replace stack top by D-M
 A=M-1
 M=M-D"#;
 
-    format!("// sub\n{}\n{}", pop, asm)
+    Ok(format!("// sub\n{}\n{}", pop, asm))
 }
 
-pub fn gen_cmd_neg() -> String {
+pub fn gen_neg(source: Source) -> Result<String> {
     let asm = r#"@SP    // replace stack top by !M
 A=M-1
 M=-M"#;
 
-    format!("// neg\n{}", asm)
+    Ok(format!("// neg\n{}", asm))
 }
 
 fn gen_new_label(op: &str, table: &mut LabelTable) -> String {
@@ -37,10 +40,10 @@ fn gen_new_label(op: &str, table: &mut LabelTable) -> String {
     format!("{}_{}", op, cnt)
 }
 
-pub fn gen_cmd_eq(table: &mut LabelTable) -> String {
-    let pop = gen_stack_pop();
+pub fn gen_eq(table: &mut LabelTable, source: Source) -> Result<String> {
+    let pop = gen_stack_pop()?;
     let label = gen_new_label("END_EQ", table);
-    format!(
+    Ok(format!(
         r#"
 // eq
 {}
@@ -56,13 +59,13 @@ M=0 // set false to stack top
 ({})
 "#,
         pop, label, label
-    )
+    ))
 }
 
-pub fn gen_cmd_gt(table: &mut LabelTable) -> String {
-    let pop = gen_stack_pop();
+pub fn gen_gt(table: &mut LabelTable, source: Source) -> Result<String> {
+    let pop = gen_stack_pop()?;
     let label = gen_new_label("END_GT", table);
-    format!(
+    Ok(format!(
         r#"
 // gt
 {}
@@ -78,13 +81,13 @@ M=0 // set false to stack top
 ({})
 "#,
         pop, label, label
-    )
+    ))
 }
 
-pub fn gen_cmd_lt(table: &mut LabelTable) -> String {
-    let pop = gen_stack_pop();
+pub fn gen_lt(table: &mut LabelTable, source: Source) -> Result<String> {
+    let pop = gen_stack_pop()?;
     let label = gen_new_label("END_LT", table);
-    format!(
+    Ok(format!(
         r#"
 // lt
 {}
@@ -100,31 +103,31 @@ M=0 // set false to stack top
 ({})
 "#,
         pop, label, label
-    )
+    ))
 }
 
-pub fn gen_cmd_and() -> String {
-    let pop = gen_stack_pop();
+pub fn gen_and(source: Source) -> Result<String> {
+    let pop = gen_stack_pop()?;
     let asm = r#"@SP    // replace stack top by D&M
 A=M-1
 M=D&M"#;
 
-    format!("// and\n{}\n{}", pop, asm)
+    Ok(format!("// and\n{}\n{}", pop, asm))
 }
 
-pub fn gen_cmd_or() -> String {
-    let pop = gen_stack_pop();
+pub fn gen_or(source: Source) -> Result<String> {
+    let pop = gen_stack_pop()?;
     let asm = r#"@SP    // replace stack top by D|M
 A=M-1
 M=D|M"#;
 
-    format!("// or\n{}\n{}", pop, asm)
+    Ok(format!("// or\n{}\n{}", pop, asm))
 }
 
-pub fn gen_cmd_not() -> String {
+pub fn gen_not(source: Source) -> Result<String> {
     let asm = r#"@SP    // replace stack top by !M
 A=M-1
 M=!M"#;
 
-    format!("// not\n{}", asm)
+    Ok(format!("// not\n{}", asm))
 }

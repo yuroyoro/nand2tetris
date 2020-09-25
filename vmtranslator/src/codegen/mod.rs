@@ -1,19 +1,30 @@
 pub mod arithmetic;
+pub mod flow;
 pub mod segment;
 pub mod stack;
 
-use arithmetic::*;
-use stack::*;
-
-use crate::parser::Command;
+use crate::parser::{Command, ParseResult};
 
 use std::collections::HashMap;
 
-pub fn generate(vm_name: &str, commands: Vec<Command>) -> String {
-    vec![prelude(), gen(vm_name, commands)].join("\n")
+use anyhow::{anyhow, Error, Result};
+
+pub fn generate(results: Vec<ParseResult>) -> (String, Vec<Error>) {
+    let prelude = gen_prelude();
+
+    let (codes, errors): (Vec<_>, Vec<_>) = results
+        .into_iter()
+        .flat_map(|res| gen(&res.vm_name, res.commands))
+        .partition(Result::is_ok);
+
+    let codes: Vec<String> = codes.into_iter().map(|res| res.unwrap()).collect();
+    let errors: Vec<Error> = errors.into_iter().map(|res| res.unwrap_err()).collect();
+
+    let asm = format!("{}\n\n{}", prelude, codes.join("\n\n"));
+    (asm, errors)
 }
 
-fn prelude() -> String {
+pub fn gen_prelude() -> String {
     // initialize stack pointer, segment base address
     let asm = r#"// prelude
 @256
@@ -26,29 +37,31 @@ M=D
 
 pub type LabelTable = HashMap<String, i64>;
 
-fn gen(vm_name: &str, commands: Vec<Command>) -> String {
+fn gen(vm_name: &str, commands: Vec<Command>) -> Vec<Result<String>> {
     let mut label_table: LabelTable = HashMap::new();
 
     commands
         .into_iter()
-        .flat_map(|cmd| gen_cmd(vm_name, cmd, &mut label_table))
-        .collect::<Vec<String>>()
-        .join("\n")
-        + "\n"
+        .map(|cmd| gen_cmd(vm_name, cmd, &mut label_table))
+        .collect::<Vec<_>>()
 }
 
-fn gen_cmd(vm_name: &str, cmd: Command, table: &mut LabelTable) -> Option<String> {
+fn gen_cmd(vm_name: &str, cmd: Command, table: &mut LabelTable) -> Result<String> {
     match cmd {
-        Command::Add => Some(gen_cmd_add()),
-        Command::Sub => Some(gen_cmd_sub()),
-        Command::Neg => Some(gen_cmd_neg()),
-        Command::Eq => Some(gen_cmd_eq(table)),
-        Command::Gt => Some(gen_cmd_gt(table)),
-        Command::Lt => Some(gen_cmd_lt(table)),
-        Command::And => Some(gen_cmd_and()),
-        Command::Or => Some(gen_cmd_or()),
-        Command::Not => Some(gen_cmd_not()),
-        Command::Push(segment, index) => Some(gen_cmd_push(vm_name, segment, index)),
-        Command::Pop(segment, index) => Some(gen_cmd_pop(vm_name, segment, index)),
+        Command::Add(source) => arithmetic::gen_add(source),
+        Command::Sub(source) => arithmetic::gen_sub(source),
+        Command::Neg(source) => arithmetic::gen_neg(source),
+        Command::Eq(source) => arithmetic::gen_eq(table, source),
+        Command::Gt(source) => arithmetic::gen_gt(table, source),
+        Command::Lt(source) => arithmetic::gen_lt(table, source),
+        Command::And(source) => arithmetic::gen_and(source),
+        Command::Or(source) => arithmetic::gen_or(source),
+        Command::Not(source) => arithmetic::gen_not(source),
+        Command::Push(segment, index, source) => stack::gen_push(vm_name, segment, index, source),
+        Command::Pop(segment, index, source) => stack::gen_pop(vm_name, segment, index, source),
+        Command::Label(label, source) => flow::gen_label(&label, source),
+        Command::Goto(label, source) => flow::gen_goto(&label, source),
+        Command::IfGoto(label, source) => flow::gen_if_goto(&label, source),
+        _ => Err(anyhow!("codegen: unexpected commnad: {:?}", cmd)),
     }
 }

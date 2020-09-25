@@ -6,6 +6,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process;
 
+#[derive(Debug, Clone)]
 pub struct Source {
     pub code: String,
     pub vm_name: String,
