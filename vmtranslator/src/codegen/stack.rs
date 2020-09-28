@@ -4,13 +4,8 @@ use crate::parser::Source;
 
 use anyhow::Result;
 
-pub fn gen_push(vm_name: &str, seg: Segment, index: i64, source: Source) -> Result<String> {
-    let asm = vec![
-        format!("// push {:?} {}", seg, index),
-        gen_segment_read(vm_name, seg, index),
-        gen_stack_push()?,
-    ]
-    .join("\n");
+pub fn gen_push(vm_name: &str, seg: Segment, index: i64, _source: Source) -> Result<String> {
+    let asm = vec![format!("// push {:?} {}", seg, index), gen_segment_read(vm_name, seg, index), gen_stack_push()?].join("\n");
 
     Ok(asm)
 }
@@ -37,13 +32,8 @@ D=M
     Ok(asm.to_string())
 }
 
-pub fn gen_pop(vm_name: &str, seg: Segment, index: i64, source: Source) -> Result<String> {
-    let asm = vec![
-        format!("// pop {:?} {}", seg, index),
-        gen_stack_pop()?,
-        gen_segment_write(vm_name, seg, index),
-    ]
-    .join("\n");
+pub fn gen_pop(vm_name: &str, seg: Segment, index: i64, _source: Source) -> Result<String> {
+    let asm = vec![format!("// pop {:?} {}", seg, index), gen_stack_pop()?, gen_segment_write(vm_name, seg, index)].join("\n");
 
     Ok(asm)
 }

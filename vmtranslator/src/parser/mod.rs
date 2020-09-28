@@ -72,10 +72,7 @@ fn parse_lines(contents: &str, vm_name: &str) -> Vec<Source> {
 }
 
 fn drop_whitespaces(content: &str) -> String {
-    content
-        .chars()
-        .skip_while(|c| c.is_whitespace())
-        .collect::<String>()
+    content.chars().skip_while(|c| c.is_whitespace()).collect::<String>()
 }
 
 fn build_source(content: &str, line: usize, vm_name: &str) -> Option<Source> {
@@ -114,29 +111,25 @@ fn parse_sources(sources: Vec<Source>, vm_name: &str) -> ParseResult {
         };
     });
 
-    ParseResult {
-        commands,
-        errors,
-        vm_name,
-    }
+    ParseResult { commands, errors, vm_name }
 }
 
 fn instrument(source: Source, current_function: &str) -> Result<Command> {
     let code = source.code.clone();
     let mut iter = code.split_ascii_whitespace();
-    let cmd = iter
-        .next()
-        .ok_or(anyhow!("{:?} : unexpected blank line", &source))?;
+    let cmd = iter.next().ok_or(anyhow!("{:?} : unexpected blank line", &source))?;
 
     let arg1 = iter.next();
     let arg2 = iter.next();
 
+    // parse arithmetic
     arithmetic::parse(&cmd, current_function, &source, arg1, arg2)
+        // or parse memory access
         .or_else(|| stack::parse(&cmd, current_function, &source, arg1, arg2))
+        // or parse program flow
         .or_else(|| flow::parse(&cmd, current_function, &source, arg1, arg2))
-        .unwrap_or(Err(anyhow!(
-            "{:?} : unexpected vm command : {}",
-            &source,
-            &cmd
-        )))
+        // or parse function
+        .or_else(|| function::parse(&cmd, current_function, &source, arg1, arg2))
+        // or error!
+        .unwrap_or(Err(anyhow!("{:?} : unexpected vm command : {}", &source, &cmd)))
 }

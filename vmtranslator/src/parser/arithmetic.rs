@@ -1,13 +1,7 @@
 use crate::parser::{Command, Source};
 use anyhow::Result;
 
-pub fn parse(
-    cmd: &str,
-    _current_function: &str,
-    source: &Source,
-    _arg1: Option<&str>,
-    _arg2: Option<&str>,
-) -> Option<Result<Command>> {
+pub fn parse(cmd: &str, _current_function: &str, source: &Source, _arg1: Option<&str>, _arg2: Option<&str>) -> Option<Result<Command>> {
     match cmd {
         "add" => Some(Ok(Command::Add(source.clone()))),
         "sub" => Some(Ok(Command::Sub(source.clone()))),

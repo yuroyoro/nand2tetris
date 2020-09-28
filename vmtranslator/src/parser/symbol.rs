@@ -5,8 +5,7 @@ pub fn validate_symbol(symbol: &str, source: &Source) -> Result<String> {
     let chars: Vec<char> = symbol.chars().collect();
 
     let valid = if let Some((head, rest)) = chars.split_first() {
-        (is_valid_symbol_char(*head) && !head.is_ascii_digit())
-            && rest.iter().all(|&c| is_valid_symbol_char(c))
+        (is_valid_symbol_char(*head) && !head.is_ascii_digit()) && rest.iter().all(|&c| is_valid_symbol_char(c))
     } else {
         false
     };

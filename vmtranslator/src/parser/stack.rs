@@ -1,13 +1,7 @@
 use crate::parser::{Command, Segment, Source};
 use anyhow::{anyhow, Result};
 
-pub fn parse(
-    cmd: &str,
-    _current_function: &str,
-    source: &Source,
-    arg1: Option<&str>,
-    arg2: Option<&str>,
-) -> Option<Result<Command>> {
+pub fn parse(cmd: &str, _current_function: &str, source: &Source, arg1: Option<&str>, arg2: Option<&str>) -> Option<Result<Command>> {
     match cmd {
         "push" => Some(parse_push(arg1, arg2, source.clone())),
         "pop" => Some(parse_pop(arg1, arg2, source.clone())),
@@ -40,9 +34,7 @@ fn parse_segment(segment: Option<&str>, source: &Source) -> Result<Segment> {
     let segment = segment.ok_or(anyhow!("{:?} : expected segment but empty", &source))?;
     let segment = to_uppercase_first_char(segment);
 
-    segment
-        .parse::<Segment>()
-        .map_err(|()| anyhow!("{:?} : invalid segment: {}", source, segment))
+    segment.parse::<Segment>().map_err(|()| anyhow!("{:?} : invalid segment: {}", source, segment))
 }
 
 fn parse_index(index: Option<&str>, segment: &Segment, source: &Source) -> Result<i64> {

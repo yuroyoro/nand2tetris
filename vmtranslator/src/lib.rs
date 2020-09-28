@@ -11,6 +11,7 @@ use std::process;
 
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
 
 /**
  * 1. Read file or directory
@@ -21,7 +22,7 @@ use std::io::Write;
 pub fn process() {
     // get filename or directory from args
     let arg = get_first_arg();
-    let vm_name = get_vm_name(&arg);
+    let (dir, vm_name) = parse_arg(&arg);
 
     let sources = read_sources(&arg).unwrap_or_else(|err| {
         println!("cannot read file: {}", err);
@@ -47,7 +48,7 @@ pub fn process() {
     }
 
     // write to file
-    write_asm(&vm_name, &asm);
+    write_asm(&dir, &vm_name, &asm);
 
     println!("Asm:");
     println!("{}", &asm);
@@ -63,16 +64,49 @@ fn get_first_arg() -> String {
     String::from(name)
 }
 
-fn get_vm_name(filename: &str) -> String {
-    if filename.ends_with(".vm") {
-        filename.replace(".vm", "")
-    } else {
-        format!("{}.asm", filename.strip_suffix("/").unwrap_or(filename))
+fn parse_arg(arg: &str) -> (String, String) {
+    let path = Path::new(arg);
+
+    if !path.exists() {
+        println!("no such path or filename: {}", arg);
+        process::exit(1);
     }
+
+    let basename = path
+        .file_name()
+        .unwrap_or_else(|| {
+            println!("invalid filename: {}", arg);
+            process::exit(1);
+        })
+        .to_string_lossy()
+        .into_owned();
+    let dir = if path.is_dir() {
+        path
+    } else {
+        path.parent().unwrap_or_else(|| {
+            println!("invalid filename: {}", arg);
+            process::exit(1);
+        })
+    };
+
+    let vm_name = if path.is_dir() {
+        basename
+    } else {
+        if basename.ends_with(".vm") {
+            basename.replace(".vm", "")
+        } else {
+            println!("filename is expected to be ends with .vm: {}", arg);
+            process::exit(1);
+        }
+    };
+
+    (dir.to_string_lossy().into_owned(), vm_name)
 }
 
-fn write_asm(vm_name: &str, asm: &str) {
+fn write_asm(dir: &str, vm_name: &str, asm: &str) {
+    let path = Path::new(dir);
     let filename = format!("{}.asm", vm_name);
+    let filename = path.join(filename);
 
     File::create(&filename)
         .unwrap_or_else(|err| {
@@ -84,5 +118,5 @@ fn write_asm(vm_name: &str, asm: &str) {
             println!("cannot write file: {}", err);
             process::exit(1);
         });
-    println!("write asm to {}", &filename);
+    println!("write asm to {}", &filename.to_string_lossy());
 }

@@ -1,0 +1,20 @@
+unstable_features            = true
+
+max_width                    = 160
+# width_heuristics           = "Max"
+comment_width                = 160
+enum_discrim_align_threshold = 160
+struct_field_align_threshold = 160
+# struct_lit_width           = 160
+# struct_variant_width       = 160
+
+blank_lines_lower_bound      = 1
+empty_item_single_line       = false
+fn_args_layout               = "Compressed"
+# fn_params_layout           = "Compressed"
+fn_single_line               = true
+format_strings               = false
+match_arm_blocks             = false
+
+
+

@@ -2,13 +2,7 @@ use crate::parser::symbol::validate_symbol;
 use crate::parser::{Command, Source};
 use anyhow::{anyhow, Result};
 
-pub fn parse(
-    cmd: &str,
-    current_function: &str,
-    source: &Source,
-    arg1: Option<&str>,
-    arg2: Option<&str>,
-) -> Option<Result<Command>> {
+pub fn parse(cmd: &str, current_function: &str, source: &Source, arg1: Option<&str>, arg2: Option<&str>) -> Option<Result<Command>> {
     match cmd {
         "function" => Some(parse_function(arg1, arg2, source.clone())),
         "call" => Some(parse_call(arg1, arg2, source.clone())),

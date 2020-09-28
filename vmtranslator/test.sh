@@ -21,7 +21,32 @@ run() {
 
   local res="Pass"
 
-  echo "Run Test ${dir}/${name}.vm"
+  echo "Run Test ${dir}/${name}.tst"
+  test_out=$($CPU_EMULATOR "${PROJECT}/${dir}/${name}.tst")
+  if [ $? -ne 0 ]; then
+    res="Fail"
+  fi
+
+  RESULT+=("[${res}] $1 : ${test_out}")
+}
+
+rundir() {
+  local dir=$(echo "$1" | sed 's/ *$//')
+  local name=$(basename $dir)
+
+  echo "----------------------------------------------------------------------"
+  echo "Compile ${dir}"
+  compile_out=$(cargo run "${PROJECT}/${dir}" 2>&1)
+
+  local status=$?
+  if [ $status -ne 0 ]; then
+    echo $compile_out
+    exit $status
+  fi
+
+  local res="Pass"
+
+  echo "Run Test ${dir}/${name}.tst"
   test_out=$($CPU_EMULATOR "${PROJECT}/${dir}/${name}.tst")
   if [ $? -ne 0 ]; then
     res="Fail"
@@ -38,10 +63,10 @@ run "07/MemoryAccess/StaticTest       "
 run "07/MemoryAccess/StaticTest       "
 run "08/ProgramFlow/BasicLoop         "
 run "08/ProgramFlow/FibonacciSeries   "
-# run "08/FunctionCalls/SimpleFunction  "
-# run "08/FunctionCalls/NestedCall      "
-# run "08/FunctionCalls/FibonacciElement"
-# run "08/FunctionCalls/StaticTest      "
+run "08/FunctionCalls/SimpleFunction  "
+rundir "08/FunctionCalls/NestedCall      "
+rundir "08/FunctionCalls/FibonacciElement"
+rundir "08/FunctionCalls/StaticsTest     "
 
 echo "----------------------------------------------------------------------"
 IFS=$'\n'

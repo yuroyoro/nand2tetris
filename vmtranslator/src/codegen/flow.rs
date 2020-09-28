@@ -3,7 +3,7 @@ use crate::parser::Source;
 
 use anyhow::Result;
 
-pub fn gen_label(label: &str, source: Source) -> Result<String> {
+pub fn gen_label(label: &str, _source: Source) -> Result<String> {
     let asm = format!(
         r#"
 // label {}
@@ -16,7 +16,7 @@ pub fn gen_label(label: &str, source: Source) -> Result<String> {
     Ok(asm)
 }
 
-pub fn gen_goto(label: &str, source: Source) -> Result<String> {
+pub fn gen_goto(label: &str, _source: Source) -> Result<String> {
     let asm = format!(
         r#"
 // goto {}
@@ -30,7 +30,7 @@ pub fn gen_goto(label: &str, source: Source) -> Result<String> {
     Ok(asm)
 }
 
-pub fn gen_if_goto(label: &str, source: Source) -> Result<String> {
+pub fn gen_if_goto(label: &str, _source: Source) -> Result<String> {
     let pop = gen_stack_pop()?;
     let asm = format!(
         r#"
