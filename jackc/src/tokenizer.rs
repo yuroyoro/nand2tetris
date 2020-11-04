@@ -425,6 +425,7 @@ fn to_xml(token: &Token) -> String {
         Token::Symbol(s, _) => match &*s.as_str() {
             "<" => format!("<symbol> &lt; </symbol>"),
             ">" => format!("<symbol> &gt; </symbol>"),
+            "&" => format!("<symbol> &amp; </symbol>"),
             _ => format!("<symbol> {} </symbol>", s),
         },
         Token::Keyword(kwd, _) => format!(

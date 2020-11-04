@@ -1,6 +1,8 @@
 hackasm/target
 vmtranslator/target
+jackc/target
 07/**/*.asm
 07/**/*.out
 08/**/*.asm
 08/**/*.out
+10/**/*.result.xml

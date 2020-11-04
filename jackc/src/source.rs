@@ -18,7 +18,7 @@ impl Source {
             .ok_or(anyhow!("invalid filename : {}", self.path.display()))?;
 
         let mut path = self.path.clone().to_path_buf();
-        path.set_file_name(format!("{}T.xml", name.to_string_lossy()));
+        path.set_file_name(format!("{}T.result.xml", name.to_string_lossy()));
         return Ok(path);
     }
 }
