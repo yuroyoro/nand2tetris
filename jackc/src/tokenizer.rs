@@ -92,6 +92,18 @@ fn keyword(s: &str) -> Option<Keyword> {
     s.parse::<Keyword>().ok()
 }
 
+macro_rules! trace {
+    ($self:ident, $msg: literal, $expression: expr) => {
+        println!("start : {} : {:?}", $msg, $self.iter.peek());
+
+        let res = $expression;
+
+        println!("end : {} : {:?} -> {:?}", $msg, $self.iter.peek(), res);
+
+        return res;
+    };
+}
+
 struct Tokenizer<'a> {
     source: Rc<Source>, // reference to source file
     iter: std::iter::Peekable<std::str::CharIndices<'a>>,
@@ -182,44 +194,31 @@ impl Tokenizer<'_> {
         Some((s, loc))
     }
 
-    fn trace<T: std::fmt::Debug>(&mut self, msg: &str, f: Box<dyn (Fn(&mut Tokenizer) -> T)>) -> T {
-        println!("start : {} : {:?}", msg, self.iter.peek());
-
-        let res = f(self);
-
-        println!("end : {} : {:?} -> {:?}", msg, self.iter.peek(), res);
-
-        res
-    }
-
-    fn consume_whitespaces_with_trace(&mut self) -> TokenizeResult {
-        self.trace(
-            "consume_whitespaces",
-            Box::new(|tk| tk.consume_whitespaces()),
-        )
-    }
-
     fn consume_whitespaces(&mut self) -> TokenizeResult {
-        self.consume_while(|c, _| c.is_ascii_whitespace())
-            .map(|t| Ok(Token::Whilespace(t.1)))
-    }
-
-    fn consume_comment_with_trace(&mut self) -> TokenizeResult {
-        self.trace("consume_comment", Box::new(|tk| tk.consume_comment()))
+        trace!(
+            self,
+            "consume_whitespaces",
+            self.consume_while(|c, _| c.is_ascii_whitespace())
+                .map(|t| Ok(Token::Whilespace(t.1)))
+        );
     }
 
     fn consume_comment(&mut self) -> TokenizeResult {
-        self.consume_if(|c| c == '/').and_then(|(_, loc)| {
-            match self.iter.peek() {
-                // "//" comment, read until new line
-                Some((_, '/')) => self.consume_single_line_comment(loc),
-                // "/* .. */" comment, read until "*/"
-                Some((_, '*')) => self.consume_multi_line_comment(loc),
-                // signle "/" token
-                Some((_, _)) => Some(Ok(Token::Symbol("/".to_string(), loc))),
-                None => None,
-            }
-        })
+        trace!(
+            self,
+            "consume_comment",
+            self.consume_if(|c| c == '/').and_then(|(_, loc)| {
+                match self.iter.peek() {
+                    // "//" comment, read until new line
+                    Some((_, '/')) => self.consume_single_line_comment(loc),
+                    // "/* .. */" comment, read until "*/"
+                    Some((_, '*')) => self.consume_multi_line_comment(loc),
+                    // signle "/" token
+                    Some((_, _)) => Some(Ok(Token::Symbol("/".to_string(), loc))),
+                    None => None,
+                }
+            })
+        );
     }
 
     fn consume_single_line_comment(&mut self, loc: Location) -> TokenizeResult {
@@ -277,8 +276,8 @@ impl Tokenizer<'_> {
         // discard whiltespaces and comments
         loop {
             match self
-                .consume_whitespaces_with_trace()
-                .or_else(|| self.consume_comment_with_trace())
+                .consume_whitespaces()
+                .or_else(|| self.consume_comment())
             {
                 Some(Ok(Token::Whilespace(_))) => continue, // whilespace
                 Some(Ok(Token::Comment(_, _))) => continue, // comment
@@ -288,10 +287,10 @@ impl Tokenizer<'_> {
         }
 
         // parse token
-        self.symbol_with_trace()
-            .or_else(|| self.string_with_trace())
-            .or_else(|| self.keyword_or_identifier_with_trace())
-            .or_else(|| self.integer_with_trace())
+        self.symbol()
+            .or_else(|| self.string())
+            .or_else(|| self.keyword_or_identifier())
+            .or_else(|| self.integer())
     }
 
     fn current_location(&self) -> Location {
@@ -303,77 +302,74 @@ impl Tokenizer<'_> {
         }
     }
 
-    fn symbol_with_trace(&mut self) -> TokenizeResult {
-        self.trace("symbol", Box::new(|tk| tk.symbol()))
-    }
-
     fn symbol(&mut self) -> TokenizeResult {
-        self.consume_if(is_symbol_char)
-            .map(|(c, loc)| Ok(Token::Symbol(c.to_string(), loc)))
-    }
-
-    fn string_with_trace(&mut self) -> TokenizeResult {
-        self.trace("string", Box::new(|tk| tk.string()))
+        trace!(
+            self,
+            "symbol",
+            self.consume_if(is_symbol_char)
+                .map(|(c, loc)| Ok(Token::Symbol(c.to_string(), loc)))
+        );
     }
 
     fn string(&mut self) -> TokenizeResult {
-        self.consume_if(|c| c == '"').and_then(|(_, loc)| {
-            let s = self
-                .consume_while(|c, escaped| escaped || (c != '"' && c != '\n'))
-                .map(|t| t.0)
-                .unwrap_or("".to_string());
-
-            self.next()
-                .map(|(_, c)| match c {
-                    '"' => Ok(Token::Str(s, loc)),
-                    c => Err(anyhow!("Tokenizer::string : unexpected char '{}'", c)),
-                })
-                .or(Some(Err(anyhow!("Tokenizer::string : unexpected EOF"))))
-        })
-    }
-
-    fn keyword_or_identifier_with_trace(&mut self) -> TokenizeResult {
-        self.trace(
-            "keyword_or_identifier",
-            Box::new(|tk| tk.keyword_or_identifier()),
-        )
-    }
-
-    fn keyword_or_identifier(&mut self) -> TokenizeResult {
-        self.consume_if(|c| c.is_ascii_alphabetic() || c == '_')
-            .map(|(c, loc)| {
-                let mut s = self
-                    .consume_while(|c, _| c.is_ascii_alphanumeric() || c == '_')
+        trace!(
+            self,
+            "string",
+            self.consume_if(|c| c == '"').and_then(|(_, loc)| {
+                let s = self
+                    .consume_while(|c, escaped| escaped || (c != '"' && c != '\n'))
                     .map(|t| t.0)
                     .unwrap_or("".to_string());
 
-                s.insert(0, c);
-                let token = match keyword(&s) {
-                    Some(kwd) => Token::Keyword(kwd, loc),
-                    None => Token::Identifier(s, loc),
-                };
-                Ok(token)
+                self.next()
+                    .map(|(_, c)| match c {
+                        '"' => Ok(Token::Str(s, loc)),
+                        c => Err(anyhow!("Tokenizer::string : unexpected char '{}'", c)),
+                    })
+                    .or(Some(Err(anyhow!("Tokenizer::string : unexpected EOF"))))
             })
+        );
     }
 
-    fn integer_with_trace(&mut self) -> TokenizeResult {
-        self.trace("integer", Box::new(|tk| tk.integer()))
+    fn keyword_or_identifier(&mut self) -> TokenizeResult {
+        trace!(
+            self,
+            "keyword_or_identifier",
+            self.consume_if(|c| c.is_ascii_alphabetic() || c == '_')
+                .map(|(c, loc)| {
+                    let mut s = self
+                        .consume_while(|c, _| c.is_ascii_alphanumeric() || c == '_')
+                        .map(|t| t.0)
+                        .unwrap_or("".to_string());
+
+                    s.insert(0, c);
+                    let token = match keyword(&s) {
+                        Some(kwd) => Token::Keyword(kwd, loc),
+                        None => Token::Identifier(s, loc),
+                    };
+                    Ok(token)
+                })
+        );
     }
 
     fn integer(&mut self) -> TokenizeResult {
-        self.consume_while(|c, _| c.is_ascii_alphanumeric() || c == '_')
-            .map(|(s, loc)| {
-                s.parse::<u16>().map_err(|err| anyhow!(err)).and_then(|n| {
-                    if n <= 32767 {
-                        Ok(Token::Integer(n, loc))
-                    } else {
-                        Err(anyhow!(
-                            "number must be grater equal than 0 and less equal than 32767 : {}",
-                            n
-                        ))
-                    }
+        trace!(
+            self,
+            "integer",
+            self.consume_while(|c, _| c.is_ascii_alphanumeric() || c == '_')
+                .map(|(s, loc)| {
+                    s.parse::<u16>().map_err(|err| anyhow!(err)).and_then(|n| {
+                        if n <= 32767 {
+                            Ok(Token::Integer(n, loc))
+                        } else {
+                            Err(anyhow!(
+                                "number must be grater equal than 0 and less equal than 32767 : {}",
+                                n
+                            ))
+                        }
+                    })
                 })
-            })
+        );
     }
 }
 
