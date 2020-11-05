@@ -1,10 +1,10 @@
 pub mod parser;
 pub mod source;
-pub mod tokenizer;
+pub mod token;
 
 use parser::{parse, write_asts};
 use source::read_sources;
-use tokenizer::{tokenize, write_tokens};
+use token::{tokenize, write_tokens};
 
 use std::env;
 use std::process;
