@@ -6,7 +6,7 @@ use std::io::prelude::*;
 use anyhow::{Context, Result};
 
 pub fn write_tokens(tokens: Tokens) -> Result<()> {
-    let path = tokens.source.xml_filename()?;
+    let path = tokens.source.token_xml_filename()?;
 
     let mut f = File::create(path)?;
 
@@ -23,11 +23,11 @@ pub fn write_tokens(tokens: Tokens) -> Result<()> {
 
 fn to_xml(token: &Token) -> String {
     match token {
-        Token::Symbol(s, _) => match &*s.as_str() {
-            "<" => format!("<symbol> &lt; </symbol>"),
-            ">" => format!("<symbol> &gt; </symbol>"),
-            "&" => format!("<symbol> &amp; </symbol>"),
-            _ => format!("<symbol> {} </symbol>", s),
+        Token::Symbol(c, _) => match c {
+            '<' => format!("<symbol> &lt; </symbol>"),
+            '>' => format!("<symbol> &gt; </symbol>"),
+            '&' => format!("<symbol> &amp; </symbol>"),
+            _ => format!("<symbol> {} </symbol>", c),
         },
         Token::Keyword(kwd, _) => format!(
             "<keyword> {} </keyword>",

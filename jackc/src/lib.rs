@@ -1,3 +1,10 @@
+#[macro_use]
+extern crate lazy_static;
+extern crate getopts;
+
+#[macro_use]
+pub mod macros;
+
 pub mod parser;
 pub mod source;
 pub mod token;
@@ -10,12 +17,25 @@ use std::env;
 use std::process;
 use std::rc::Rc;
 
+use getopts::Options;
+
 use anyhow::Result;
 
 #[derive(PartialEq)]
-enum Mode {
+pub enum Mode {
     Tokenize,
     Parse,
+    Compile,
+}
+
+pub struct Config {
+    pub mode: Mode,
+    pub debug: bool,
+    pub target: String,
+}
+
+lazy_static! {
+    pub static ref CONFIG: Config = parse_args();
 }
 
 /**
@@ -25,11 +45,8 @@ enum Mode {
  * 4. generate xml from AST
  */
 pub fn process() {
-    // get filename or directory from args
-    let (mode, arg) = parse_args();
-
     // source iterator
-    let sources = read_sources(&arg)
+    let sources = read_sources(&CONFIG.target)
         .unwrap_or_else(|err| {
             println!("cannot read file: {}", err);
             process::exit(1);
@@ -43,7 +60,7 @@ pub fn process() {
 
     handle_errors("tokenize", errors);
 
-    if mode == Mode::Tokenize {
+    if CONFIG.mode == Mode::Tokenize {
         results
             .into_iter()
             .map(|tokens| write_tokens(tokens.unwrap()))
@@ -63,9 +80,16 @@ pub fn process() {
 
     handle_errors("parse", errors);
 
+    if CONFIG.mode == Mode::Parse {
     results
         .into_iter()
-        .for_each(|asts| write_asts(asts.unwrap()));
+        .map(|asts| write_asts(asts.unwrap()))
+        .collect::<Result<()>>()
+        .unwrap_or_else(|err| {
+            println!("failed to write xml {}", err);
+            process::exit(1);
+        });
+    }
 
     process::exit(0);
 }
@@ -80,21 +104,56 @@ fn handle_errors<T: std::fmt::Debug>(msg: &str, errors: Vec<Result<T>>) -> () {
     }
 }
 
-fn parse_args() -> (Mode, String) {
-    // get first arg
+fn parse_args() -> Config {
     let args: Vec<String> = env::args().collect();
+    let mut opts = Options::new();
 
-    let error_handler = || {
+    opts.optflag(
+        "",
+        "tokenize",
+        "tokenize sources and write xml to *T.result.xml",
+    );
+    opts.optflag("", "parse", "parse to ast and write xml to *.result.xm");
+    opts.optflag("v", "verbose", "print debug logs");
+
+    let matches = match opts.parse(&args[1..]) {
+        Ok(m) => m,
+        Err(f) => {
+            println!("{}", f);
+            process::exit(1);
+        }
+    };
+
+    let mut mode = Mode::Compile;
+    if matches.opt_present("tokenize") {
+        mode = Mode::Tokenize;
+    }
+    if matches.opt_present("parse") {
+        mode = Mode::Parse;
+    }
+
+    let debug = matches.opt_present("v");
+
+    let target = if !matches.free.is_empty() {
+        matches.free[0].clone()
+    } else {
         println!("not enough arguments");
         process::exit(1);
     };
 
-    let arg = args.get(1).unwrap_or_else(error_handler);
-    let get_2nd_arg = || String::from(args.get(2).unwrap_or_else(error_handler));
-
-    match arg.as_str() {
-        "tokenize" => (Mode::Tokenize, get_2nd_arg()),
-        "parse" => (Mode::Parse, get_2nd_arg()),
-        _ => (Mode::Parse, String::from(arg)),
+    Config {
+        mode,
+        debug,
+        target,
     }
+}
+
+pub fn to_lowercase_first_char(s: &str) -> String {
+    let (head, tail) = s.split_at(1);
+    format!("{}{}", head.to_lowercase(), tail)
+}
+
+pub fn to_uppercase_first_char(s: &str) -> String {
+    let (head, tail) = s.split_at(1);
+    format!("{}{}", head.to_uppercase(), tail)
 }

@@ -1,3 +1,4 @@
+use crate::debug;
 use crate::token::*;
 
 use crate::source::Source;
@@ -8,11 +9,11 @@ use anyhow::{anyhow, Result};
 
 macro_rules! trace {
     ($self:ident, $msg: literal, $expression: expr) => {
-        println!("start : {} : {:?}", $msg, $self.iter.peek());
+        debug!("start : {} : {:?}", $msg, $self.iter.peek());
 
         let res = $expression;
 
-        println!("end : {} : {:?} -> {:?}", $msg, $self.iter.peek(), res);
+        debug!("end : {} : {:?} -> {:?}", $msg, $self.iter.peek(), res);
 
         return res;
     };
@@ -128,7 +129,7 @@ impl Tokenizer<'_> {
                     // "/* .. */" comment, read until "*/"
                     Some((_, '*')) => self.consume_multi_line_comment(loc),
                     // signle "/" token
-                    Some((_, _)) => Some(Ok(Token::Symbol("/".to_string(), loc))),
+                    Some((_, _)) => Some(Ok(Token::Symbol('/', loc))),
                     None => None,
                 }
             })
@@ -221,7 +222,7 @@ impl Tokenizer<'_> {
             self,
             "symbol",
             self.consume_if(is_symbol_char)
-                .map(|(c, loc)| Ok(Token::Symbol(c.to_string(), loc)))
+                .map(|(c, loc)| Ok(Token::Symbol(c, loc)))
         );
     }
 
@@ -296,7 +297,7 @@ impl Iterator for Tokenizer<'_> {
         }
 
         if let Some(Ok(token)) = self.next_token() {
-            println!("  token -> {:?}", token);
+            debug!("  token -> {:?}", token);
             Some(Ok(token))
         } else {
             None

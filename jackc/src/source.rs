@@ -11,14 +11,24 @@ pub struct Source {
 }
 
 impl Source {
-    pub fn xml_filename(&self) -> Result<PathBuf> {
-        let name = self
-            .path
+    fn basename(&self) -> Result<String> {
+        self.path
             .file_stem()
-            .ok_or(anyhow!("invalid filename : {}", self.path.display()))?;
+            .map(|s| s.to_string_lossy().into_owned())
+            .ok_or(anyhow!("invalid filename : {}", self.path.display()))
+    }
 
+    pub fn token_xml_filename(&self) -> Result<PathBuf> {
+        let name = self.basename()?;
         let mut path = self.path.clone().to_path_buf();
-        path.set_file_name(format!("{}T.result.xml", name.to_string_lossy()));
+        path.set_file_name(format!("{}.tokens.xml", name));
+        return Ok(path);
+    }
+
+    pub fn ast_xml_filename(&self) -> Result<PathBuf> {
+        let name = self.basename()?;
+        let mut path = self.path.clone().to_path_buf();
+        path.set_file_name(format!("{}.ast.xml", name));
         return Ok(path);
     }
 }

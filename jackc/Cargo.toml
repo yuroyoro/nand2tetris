@@ -8,4 +8,6 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0"
+getopts = "0.2"
+lazy_static = "1.4.0"
 enum-utils = "0.1.2"
