@@ -61,6 +61,18 @@ impl fmt::Debug for Token {
 }
 
 impl Token {
+    pub fn location(&self) -> Location {
+        match self {
+            Token::Whilespace(loc) => loc.clone(),
+            Token::Comment(_, loc) => loc.clone(),
+            Token::Keyword(_, loc) => loc.clone(),
+            Token::Symbol(_, loc) => loc.clone(),
+            Token::Integer(_, loc) => loc.clone(),
+            Token::Str(_, loc) => loc.clone(),
+            Token::Identifier(_, loc) => loc.clone(),
+        }
+    }
+
     pub fn is_any_keyword(&self) -> bool {
         match self {
             Token::Keyword(_, _) => true,

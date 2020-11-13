@@ -1,5 +1,6 @@
 use crate::source::Source;
 use crate::to_lowercase_first_char;
+use crate::token::Location;
 
 use std::rc::Rc;
 
@@ -11,19 +12,37 @@ pub struct ASTs {
 
 #[derive(Debug, Clone)]
 pub struct Class {
+    pub loc: Location,
     pub name: String,
     pub vars: Vec<ClassVarDec>,
     pub subroutines: Vec<SubroutineDec>,
 }
 
+impl Class {
+    pub fn static_vars(&self) -> Vec<&ClassVarDec> {
+        self.vars
+            .iter()
+            .filter(|var| var.modifier == ClassVarModifier::Static)
+            .collect()
+    }
+
+    pub fn field_vars(&self) -> Vec<&ClassVarDec> {
+        self.vars
+            .iter()
+            .filter(|var| var.modifier == ClassVarModifier::Field)
+            .collect()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ClassVarDec {
+    pub loc: Location,
     pub modifier: ClassVarModifier,
     pub typ: Type,
     pub names: Vec<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ClassVarModifier {
     Static,
     Field,
@@ -37,6 +56,7 @@ impl ClassVarModifier {
 
 #[derive(Debug, Clone)]
 pub struct SubroutineDec {
+    pub loc: Location,
     pub modifier: SubroutineModifier,
     pub typ: ReturnType,
     pub name: String,
@@ -44,7 +64,7 @@ pub struct SubroutineDec {
     pub body: SubroutineBody,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SubroutineModifier {
     Constructor,
     Function,
@@ -59,6 +79,7 @@ impl SubroutineModifier {
 
 #[derive(Debug, Clone)]
 pub struct ParameterDec {
+    pub loc: Location,
     pub typ: Type,
     pub name: String,
 }
@@ -71,6 +92,7 @@ pub struct SubroutineBody {
 
 #[derive(Debug, Clone)]
 pub struct VarDec {
+    pub loc: Location,
     pub typ: Type,
     pub names: Vec<String>,
 }
@@ -91,6 +113,7 @@ pub enum Statement {
 
 #[derive(Debug, Clone)]
 pub struct LetStatement {
+    pub loc: Location,
     pub name: String,
     pub accessor: Option<Expr>,
     pub expr: Expr,
@@ -98,6 +121,7 @@ pub struct LetStatement {
 
 #[derive(Debug, Clone)]
 pub struct IfStatement {
+    pub loc: Location,
     pub cond: Expr,
     pub statements: Statements,
     pub else_branch: Option<Statements>,
@@ -105,22 +129,26 @@ pub struct IfStatement {
 
 #[derive(Debug, Clone)]
 pub struct WhileStatement {
+    pub loc: Location,
     pub cond: Expr,
     pub statements: Statements,
 }
 
 #[derive(Debug, Clone)]
 pub struct DoStatement {
+    pub loc: Location,
     pub call: SubroutineCall,
 }
 
 #[derive(Debug, Clone)]
 pub struct ReturnStatement {
+    pub loc: Location,
     pub expr: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Expr {
+    pub loc: Location,
     pub lhs: Box<Term>,
     pub rhs: Box<Option<(Op, Expr)>>,
 }
@@ -222,6 +250,7 @@ impl UnaryOp {
 
 #[derive(Debug, Clone)]
 pub struct SubroutineCall {
+    pub loc: Location,
     pub reciever: Option<String>,
     pub name: String,
     pub exprs: Vec<Expr>,

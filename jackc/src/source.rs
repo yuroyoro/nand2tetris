@@ -18,18 +18,23 @@ impl Source {
             .ok_or(anyhow!("invalid filename : {}", self.path.display()))
     }
 
-    pub fn token_xml_filename(&self) -> Result<PathBuf> {
+    fn generate_pathbuf(&self, suffix: &str) -> Result<PathBuf> {
         let name = self.basename()?;
         let mut path = self.path.clone().to_path_buf();
-        path.set_file_name(format!("{}.tokens.xml", name));
+        path.set_file_name(format!("{}.{}", name, suffix));
         return Ok(path);
     }
 
+    pub fn token_xml_filename(&self) -> Result<PathBuf> {
+        self.generate_pathbuf("tokens.xml")
+    }
+
     pub fn ast_xml_filename(&self) -> Result<PathBuf> {
-        let name = self.basename()?;
-        let mut path = self.path.clone().to_path_buf();
-        path.set_file_name(format!("{}.ast.xml", name));
-        return Ok(path);
+        self.generate_pathbuf("ast.xml")
+    }
+
+    pub fn vm_filename(&self) -> Result<PathBuf> {
+        self.generate_pathbuf("vm")
     }
 }
 

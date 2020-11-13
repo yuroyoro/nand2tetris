@@ -1,4 +1,4 @@
-use crate::token::{Keyword, Token, Tokens};
+use crate::token::{Keyword, Location, Token, Tokens};
 
 use anyhow::{anyhow, Result};
 
@@ -15,6 +15,13 @@ impl Stream {
 
     pub fn current(&mut self) -> Option<&Token> {
         self.iter.peek()
+    }
+
+    pub fn location(&mut self) -> Result<Location> {
+        self.iter
+            .peek()
+            .map(|t| t.location())
+            .ok_or_else(|| anyhow!("unexpected eof",))
     }
 
     pub fn ensure<F>(&mut self, msg: &str, f: F) -> Result<Token>

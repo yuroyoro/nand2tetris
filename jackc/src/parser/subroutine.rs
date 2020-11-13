@@ -1,6 +1,6 @@
 use crate::parser::stream::Stream;
 use crate::parser::*;
-use crate::token::{Keyword, Token};
+use crate::token::{Keyword, Location, Token};
 use anyhow::Result;
 use trace;
 
@@ -23,13 +23,14 @@ pub fn parse_subroutine_decs(stream: &mut Stream) -> Result<Vec<SubroutineDec>> 
 fn parse_subroutine_dec(stream: &mut Stream) -> Result<Option<SubroutineDec>> {
     trace!(stream, "parse_subroutine_dec", {
         if let Some(modifier) = parse_subroutine_dec_modifier(stream) {
-            let modifier = modifier?;
-            let typ = parse_return_type(stream)?;
+            let (modifier, loc) = modifier?;
+            let (typ, _loc) = parse_return_type(stream)?;
             let name = stream.ensure_identifier()?;
             let parameters = parse_parameter_list(stream)?;
             let body = parse_subroutine_body(stream)?;
 
             let sub = SubroutineDec {
+                loc,
                 modifier,
                 typ,
                 name,
@@ -44,14 +45,18 @@ fn parse_subroutine_dec(stream: &mut Stream) -> Result<Option<SubroutineDec>> {
     });
 }
 
-fn parse_subroutine_dec_modifier(stream: &mut Stream) -> Option<Result<SubroutineModifier>> {
+fn parse_subroutine_dec_modifier(
+    stream: &mut Stream,
+) -> Option<Result<(SubroutineModifier, Location)>> {
     trace!(stream, "parse_subroutine_dec_modifier", {
         stream
             .consume_if_keywords(&[Keyword::Constructor, Keyword::Function, Keyword::Method])
             .map(|t| match t {
-                Token::Keyword(Keyword::Constructor, _) => Ok(SubroutineModifier::Constructor),
-                Token::Keyword(Keyword::Function, _) => Ok(SubroutineModifier::Function),
-                Token::Keyword(Keyword::Method, _) => Ok(SubroutineModifier::Method),
+                Token::Keyword(Keyword::Constructor, loc) => {
+                    Ok((SubroutineModifier::Constructor, loc))
+                }
+                Token::Keyword(Keyword::Function, loc) => Ok((SubroutineModifier::Function, loc)),
+                Token::Keyword(Keyword::Method, loc) => Ok((SubroutineModifier::Method, loc)),
                 _ => stream.unexpected_token_result(
                     "expected keyword('constructor' or 'function' or 'method')",
                 ),
@@ -59,12 +64,14 @@ fn parse_subroutine_dec_modifier(stream: &mut Stream) -> Option<Result<Subroutin
     });
 }
 
-fn parse_return_type(stream: &mut Stream) -> Result<ReturnType> {
+fn parse_return_type(stream: &mut Stream) -> Result<(ReturnType, Location)> {
     trace!(stream, "parse_return_type", {
         stream
             .consume_if_keyword(Keyword::Void)
-            .map(|_t| Ok(ReturnType::Void))
-            .or_else(|| Some(types::parse_type_or_die(stream).map(|ty| ReturnType::Type(ty))))
+            .map(|t| Ok((ReturnType::Void, t.location())))
+            .or_else(|| {
+                Some(types::parse_type_or_die(stream).map(|(ty, loc)| (ReturnType::Type(ty), loc)))
+            })
             .unwrap_or_else(|| stream.unexpected_token_result("expected type ('void' or type)"))
     });
 }
@@ -76,9 +83,9 @@ fn parse_parameter_list(stream: &mut Stream) -> Result<Vec<ParameterDec>> {
 
         loop {
             match types::parse_type(stream) {
-                Some(Ok(typ)) => {
+                Some(Ok((typ, loc))) => {
                     let name = stream.ensure_identifier()?;
-                    let param = ParameterDec { name, typ };
+                    let param = ParameterDec { loc, name, typ };
                     params.push(param);
                 }
                 Some(Err(err)) => return Err(err),
@@ -129,12 +136,12 @@ fn parse_vars(stream: &mut Stream) -> Result<Vec<VarDec>> {
 fn parse_var_dec(stream: &mut Stream) -> Result<Option<VarDec>> {
     trace!(stream, "parse_var_dec", {
         if let Some(_) = stream.consume_if_keyword(Keyword::Var) {
-            let typ = types::parse_type_or_die(stream)?;
+            let (typ, loc) = types::parse_type_or_die(stream)?;
             let names = parse_var_dec_names(stream)?;
 
             stream.ensure_symbol(';')?;
 
-            Ok(Some(VarDec { typ, names }))
+            Ok(Some(VarDec { loc, typ, names }))
         } else {
             Ok(None)
         }

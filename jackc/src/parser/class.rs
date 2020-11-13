@@ -1,6 +1,6 @@
 use crate::parser::stream::Stream;
 use crate::parser::*;
-use crate::token::{Keyword, Token};
+use crate::token::{Keyword, Location, Token};
 use trace;
 
 use anyhow::Result;
@@ -8,6 +8,7 @@ use anyhow::Result;
 // ’class’ className ’{’ classVarDec* subroutineDec* ’}’
 pub fn parse_class(stream: &mut Stream) -> Result<Class> {
     trace!(stream, "parse_class", {
+        let loc = stream.location()?;
         stream.ensure_keyword(Keyword::Class)?;
 
         let name = stream.ensure_identifier()?;
@@ -18,6 +19,7 @@ pub fn parse_class(stream: &mut Stream) -> Result<Class> {
         let subroutines = subroutine::parse_subroutine_decs(stream)?;
 
         Ok(Class {
+            loc,
             name,
             vars,
             subroutines,
@@ -44,12 +46,13 @@ fn parse_class_var_decs(stream: &mut Stream) -> Result<Vec<ClassVarDec>> {
 fn parse_class_var_dec(stream: &mut Stream) -> Result<Option<ClassVarDec>> {
     trace!(stream, "parse_class_var_dec", {
         if let Some(modifier) = parse_class_var_dec_modifier(stream) {
-            let modifier = modifier?;
-            let typ = types::parse_type_or_die(stream)?;
+            let (modifier, loc) = modifier?;
+            let (typ, _loc) = types::parse_type_or_die(stream)?;
             let names = parse_class_var_dec_names(stream)?;
 
             stream.ensure_symbol(';')?;
             let cls = ClassVarDec {
+                loc,
                 modifier,
                 typ,
                 names,
@@ -61,12 +64,14 @@ fn parse_class_var_dec(stream: &mut Stream) -> Result<Option<ClassVarDec>> {
     });
 }
 
-fn parse_class_var_dec_modifier(stream: &mut Stream) -> Option<Result<ClassVarModifier>> {
+fn parse_class_var_dec_modifier(
+    stream: &mut Stream,
+) -> Option<Result<(ClassVarModifier, Location)>> {
     stream
         .consume_if_keywords(&[Keyword::Static, Keyword::Field])
         .map(|t| match t {
-            Token::Keyword(Keyword::Static, _) => Ok(ClassVarModifier::Static),
-            Token::Keyword(Keyword::Field, _) => Ok(ClassVarModifier::Field),
+            Token::Keyword(Keyword::Static, loc) => Ok((ClassVarModifier::Static, loc)),
+            Token::Keyword(Keyword::Field, loc) => Ok((ClassVarModifier::Field, loc)),
             _ => stream.unexpected_token_result("expected keyword('static' or 'field')"),
         })
 }

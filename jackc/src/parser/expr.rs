@@ -11,9 +11,10 @@ pub fn parse_expr_or_die(stream: &mut Stream) -> Result<Expr> {
 pub fn parse_expr(stream: &mut Stream) -> Option<Result<Expr>> {
     trace!(stream, "parse_expr", {
         term::parse_term(stream).map(|lhs| {
-            let lhs = lhs?;
+            let (lhs, loc) = lhs?;
             let rhs = op::parse_op(stream)?;
             let expr = Expr {
+                loc: loc,
                 lhs: Box::new(lhs),
                 rhs: Box::new(rhs),
             };
@@ -47,6 +48,7 @@ pub fn parse_subroutine_call_with_ident(
     stream: &mut Stream,
 ) -> Result<SubroutineCall> {
     trace!(stream, "parse_subroutine_call_with_ident", {
+        let loc = stream.location()?;
         let (reciever, name): (Option<String>, String) = match stream.consume_if_symbol('.') {
             Some(_) => stream
                 .ensure_identifier()
@@ -61,6 +63,7 @@ pub fn parse_subroutine_call_with_ident(
         stream.ensure_symbol(')')?;
 
         Ok(SubroutineCall {
+            loc,
             reciever,
             name,
             exprs,

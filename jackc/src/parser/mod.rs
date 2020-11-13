@@ -14,7 +14,7 @@ pub mod writer;
 
 use crate::token::Tokens;
 
-use ast::*;
+pub use ast::*;
 use stream::Stream;
 
 use anyhow::Result;

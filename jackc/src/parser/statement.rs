@@ -34,7 +34,8 @@ fn parse_statement(stream: &mut Stream) -> Result<Option<Statement>> {
 
 fn parse_let(stream: &mut Stream) -> Option<Result<Statement>> {
     trace!(stream, "parse_let", {
-        stream.consume_if_keyword(Keyword::Let).map(|_t| {
+        stream.consume_if_keyword(Keyword::Let).map(|t| {
+            let loc = t.location();
             let name = stream.ensure_identifier()?;
             let accessor = parse_accessor(stream)?;
 
@@ -42,6 +43,7 @@ fn parse_let(stream: &mut Stream) -> Option<Result<Statement>> {
 
             let expr = expr::parse_expr_or_die(stream)?;
             let stmt = LetStatement {
+                loc,
                 name,
                 accessor,
                 expr,
@@ -85,7 +87,8 @@ fn parse_block(stream: &mut Stream) -> Result<Statements> {
 
 fn parse_if(stream: &mut Stream) -> Option<Result<Statement>> {
     trace!(stream, "parse_if", {
-        stream.consume_if_keyword(Keyword::If).map(|_t| {
+        stream.consume_if_keyword(Keyword::If).map(|t| {
+            let loc = t.location();
             let cond = parse_cond_expr(stream)?;
             let statements = parse_block(stream)?;
 
@@ -95,6 +98,7 @@ fn parse_if(stream: &mut Stream) -> Option<Result<Statement>> {
                 .transpose()?;
 
             let stmt = IfStatement {
+                loc,
                 cond,
                 statements,
                 else_branch,
@@ -106,11 +110,16 @@ fn parse_if(stream: &mut Stream) -> Option<Result<Statement>> {
 
 fn parse_while(stream: &mut Stream) -> Option<Result<Statement>> {
     trace!(stream, "parse_while", {
-        stream.consume_if_keyword(Keyword::While).map(|_t| {
+        stream.consume_if_keyword(Keyword::While).map(|t| {
+            let loc = t.location();
             let cond = parse_cond_expr(stream)?;
             let statements = parse_block(stream)?;
 
-            let stmt = WhileStatement { cond, statements };
+            let stmt = WhileStatement {
+                loc,
+                cond,
+                statements,
+            };
             Ok(Statement::While(stmt))
         })
     });
@@ -118,12 +127,13 @@ fn parse_while(stream: &mut Stream) -> Option<Result<Statement>> {
 
 fn parse_do(stream: &mut Stream) -> Option<Result<Statement>> {
     trace!(stream, "parse_do", {
-        stream.consume_if_keyword(Keyword::Do).map(|_t| {
+        stream.consume_if_keyword(Keyword::Do).map(|t| {
+            let loc = t.location();
             let call = expr::parse_subroutine_call(stream)?;
 
             stream.ensure_symbol(';')?;
 
-            let stmt = DoStatement { call };
+            let stmt = DoStatement { loc, call };
             Ok(Statement::Do(stmt))
         })
     });
@@ -131,12 +141,13 @@ fn parse_do(stream: &mut Stream) -> Option<Result<Statement>> {
 
 fn parse_return(stream: &mut Stream) -> Option<Result<Statement>> {
     trace!(stream, "parse_return", {
-        stream.consume_if_keyword(Keyword::Return).map(|_t| {
+        stream.consume_if_keyword(Keyword::Return).map(|t| {
+            let loc = t.location();
             let expr = expr::parse_expr(stream).transpose()?;
 
             stream.ensure_symbol(';')?;
 
-            let stmt = ReturnStatement { expr };
+            let stmt = ReturnStatement { loc, expr };
             Ok(Statement::Return(stmt))
         })
     });

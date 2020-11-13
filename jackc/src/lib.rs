@@ -5,13 +5,14 @@ extern crate getopts;
 #[macro_use]
 pub mod macros;
 
+pub mod codegen;
 pub mod parser;
 pub mod source;
 pub mod token;
 
-use parser::{parse, write_asts};
-use source::read_sources;
-use token::{tokenize, write_tokens};
+use parser::ASTs;
+use source::SourceIter;
+use token::Tokens;
 
 use std::env;
 use std::process;
@@ -42,20 +43,29 @@ lazy_static! {
  * 1. Read file or directory
  * 2. tokenize each .jack files to Token(s)
  * 3. parse each .jack files to AST
- * 4. generate xml from AST
+ * 4. generate vm commands from AST
  */
 pub fn process() {
     // source iterator
-    let sources = read_sources(&CONFIG.target)
-        .unwrap_or_else(|err| {
-            println!("cannot read file: {}", err);
-            process::exit(1);
-        })
-        .map(|ressrc| ressrc.map(Rc::new)); // wrap sources by Rc
+    let sources = source::read_sources(&CONFIG.target).unwrap_or_else(|err| {
+        println!("cannot read file: {}", err);
+        process::exit(1);
+    });
 
     // Tokenize
+    let tokens_list = process_tokenize(sources);
+
+    // Parse
+    let asts_list = process_parse(tokens_list);
+
+    process_codegen(asts_list);
+
+    process::exit(0);
+}
+
+fn process_tokenize(sources: SourceIter) -> Vec<Tokens> {
     let (results, errors): (Vec<_>, Vec<_>) = sources
-        .map(|rs| rs.and_then(|rcsrc| tokenize(rcsrc)))
+        .map(|rs| rs.and_then(|rcsrc| token::tokenize(Rc::new(rcsrc))))
         .partition(Result::is_ok);
 
     handle_errors("tokenize", errors);
@@ -63,7 +73,7 @@ pub fn process() {
     if CONFIG.mode == Mode::Tokenize {
         results
             .into_iter()
-            .map(|tokens| write_tokens(tokens.unwrap()))
+            .map(|tokens| token::write_tokens(tokens.unwrap()))
             .collect::<Result<()>>()
             .unwrap_or_else(|err| {
                 println!("failed to write xml {}", err);
@@ -72,26 +82,37 @@ pub fn process() {
         process::exit(0);
     }
 
-    // Parse
-    let (results, errors): (Vec<_>, Vec<_>) = results
+    results.into_iter().map(|tk| tk.unwrap()).collect()
+}
+
+fn process_parse(tokens_list: Vec<Tokens>) -> Vec<ASTs> {
+    let (results, errors): (Vec<_>, Vec<_>) = tokens_list
         .into_iter()
-        .map(|tokens| parse(tokens.unwrap()))
+        .map(|tokens| parser::parse(tokens))
         .partition(Result::is_ok);
 
     handle_errors("parse", errors);
 
     if CONFIG.mode == Mode::Parse {
-    results
-        .into_iter()
-        .map(|asts| write_asts(asts.unwrap()))
-        .collect::<Result<()>>()
-        .unwrap_or_else(|err| {
-            println!("failed to write xml {}", err);
-            process::exit(1);
-        });
+        results
+            .into_iter()
+            .map(|asts| parser::write_asts(asts.unwrap()))
+            .collect::<Result<()>>()
+            .unwrap_or_else(|err| {
+                println!("failed to write xml {}", err);
+                process::exit(1);
+            });
+
+        process::exit(0);
     }
 
-    process::exit(0);
+    results.into_iter().map(|asts| asts.unwrap()).collect()
+}
+
+fn process_codegen(asts_list: Vec<ASTs>) {
+    let (_, errors): (Vec<_>, Vec<_>) = codegen::gen(asts_list);
+
+    handle_errors("codegen", errors);
 }
 
 fn handle_errors<T: std::fmt::Debug>(msg: &str, errors: Vec<Result<T>>) -> () {
