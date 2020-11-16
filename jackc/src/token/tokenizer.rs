@@ -296,11 +296,8 @@ impl Iterator for Tokenizer<'_> {
             return None;
         }
 
-        if let Some(Ok(token)) = self.next_token() {
-            debug!("  token -> {:?}", token);
-            Some(Ok(token))
-        } else {
-            None
-        }
+        let res = self.next_token();
+        debug!("  token -> {:?}", res);
+        res
     }
 }

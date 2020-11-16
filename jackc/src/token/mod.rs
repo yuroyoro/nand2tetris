@@ -214,6 +214,7 @@ pub fn tokenize(source: Rc<Source>) -> Result<Tokens> {
     let tokenizer = Tokenizer::new(source.clone(), &source.content);
 
     let tokens: Result<Vec<Token>> = tokenizer.collect();
+    debug!("Tokenize Result : {:?}", tokens);
     let tokens = tokens?;
 
     debug!("End tokenize : {}\n", source.path.display());
