@@ -8,40 +8,217 @@
  * Note: Jack compilers implement multiplication and division using OS method calls.
  */
 class Math {
+    static Array bits, cache;
 
     /** Initializes the library. */
     function void init() {
+      var int i, n;
+      let i = 0;
+     let n = 1;
+      let bits = Array.new(16);
+      while ( i < 16) {
+       let bits[i] = n;
+        let n = n + n;
+        let i = i + 1;
+      }
+
+      let cache = Array.new(16);
+
+      return;
     }
 
     /** Returns the absolute value of x. */
     function int abs(int x) {
+      if (x < 0) {
+        return -x;
+      }
+      return x;
     }
 
-    /** Returns the product of x and y. 
-     *  When a Jack compiler detects the multiplication operator '*' in the 
+    /** Returns the product of x and y.
+     *  When a Jack compiler detects the multiplication operator '*' in the
      *  program's code, it handles it by invoking this method. In other words,
      *  the Jack expressions x*y and multiply(x,y) return the same value.
      */
     function int multiply(int x, int y) {
+      var int tmp, i, j, sum;
+      var bool neg;
+
+      let neg = ((x < 0) & (y > 0)) | ((x > 0) & (y < 0));
+
+      let x = Math.abs(x);
+      let y = Math.abs(y);
+
+      if (~(x < y)) { // swap x  y
+        let tmp = x;
+        let x = y;
+        let y = tmp;
+      }
+
+      while ( (j - 1) < (y - 1) ) {
+        if ( (bits[i] & y) > 0 ) {
+          let sum = sum + x;
+          let j = j + bits[i];
+        }
+        let x = x + x;
+        let i = i + 1;
+      }
+
+      if (neg) {
+        let sum = -sum;
+      }
+
+      return sum;
     }
 
     /** Returns the integer part of x/y.
-     *  When a Jack compiler detects the multiplication operator '/' in the 
+     *  When a Jack compiler detects the multiplication operator '/' in the
      *  program's code, it handles it by invoking this method. In other words,
      *  the Jack expressions x/y and divide(x,y) return the same value.
      */
     function int divide(int x, int y) {
+      // var int q, qy;
+
+      // if ( y = 0 ) {
+      //   do Sys.error(3);
+      // }
+
+      // if ( x = 0 ){
+      //   return 0;
+      // }
+
+      // if ( x < 0 ) {
+      //   return -Math.divide( Math.abs(x), y );
+      // }
+
+      // if ( y < 0 ) {
+      //   return -Math.divide( x, Math.abs(y) );
+      // }
+
+      // if ( x < y ) {
+      //   return 0;
+      // }
+
+      // if ( y > 16383) { // y + y will overflow
+      //   let q = 0;
+      // } else {
+      //   let q = Math.divide(x, y + y);
+      // }
+
+      // let qy = q * y;
+
+      // if ( (x - (qy + qy)) < y ) {
+      //   return q + q;
+      // }
+
+      // return q + q + 1;
+      //
+      var int i, j, q;
+      var bool neg;
+
+      if ( y = 0 ) {
+        do Sys.error(1);
+      }
+
+      let neg = ( (x < 0) & (y > 0) ) | ( (x > 0) & (y < 0) );
+      let cache[0] = Math.abs(y);
+      let x = Math.abs(x);
+
+      while( (i < 15) & (~j) ) {
+        let j = (32767 - (cache[i] - 1)) < (cache[i] - 1);
+        if(~j) {
+          let cache[i + 1] = cache[i] + cache[i];
+          let j = (cache[i + 1] - 1) > (x - 1);
+          if(~j) {
+            let i = i + 1;
+          }
+        }
+      }
+
+      while ( i > -1 ) {
+        if ( ~((cache[i] - 1) > (x - 1)) ) {
+          let q = q + bits[i];
+          let x = x - cache[i];
+        }
+
+        let i = i - 1;
+      }
+
+      if (neg) {
+        let q = -q;
+      }
+
+      return q;
+    }
+
+    /** Returns the integer the n power of x. */
+    function int pow(int x, int n) {
+      var int i, y;
+
+      let i = 1;
+      let y = x;
+
+      if ( n = 0 ) {
+        return 1;
+      }
+
+      while ( i < n ) {
+        let y = y * x;
+        let i = i + 1;
+      }
+
+      return y;
+    }
+
+    /** Return x mod y */
+    function int mod(int x, int y) {
+      var int n;
+      let n = x / y;
+      return x - (n * y);
     }
 
     /** Returns the integer part of the square root of x. */
     function int sqrt(int x) {
+      var int i, j, z, v;
+      let i = 512;
+      let j = 0;
+
+      while ( i > 0 ) {
+          let v = j + i;
+          let z  = v * v;
+
+          if ( z > i ) {
+              if ( (z < x) | (z = x) ) {
+                  let j = j + i;
+              }
+          }
+          let i = i / 2;
+      }
+      return j;
     }
 
     /** Returns the greater number. */
     function int max(int a, int b) {
+      if ( a > b ) {
+        return a;
+      } else {
+        return b;
+      }
     }
 
     /** Returns the smaller number. */
     function int min(int a, int b) {
+      if ( b > a ) {
+        return a;
+      } else {
+        return b;
+      }
+    }
+
+    function boolean bit(int x, int i) {
+       if ((x & bits[i]) > 0) {
+         return true;
+       }
+       return false;
     }
 }

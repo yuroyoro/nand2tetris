@@ -11,54 +11,146 @@
  * string-oriented operations.
  */
 class String {
+    field int length, max;
+    field Array buf;
 
     /** constructs a new empty string with a maximum length of maxLength
      *  and initial length of 0. */
     constructor String new(int maxLength) {
+      let length = 0;
+      let max = maxLength;
+      if (maxLength = 0) {
+        return this;
+      }
+      let buf = Memory.alloc(maxLength);
+
+      return this;
     }
 
     /** Disposes this string. */
     method void dispose() {
+      do Memory.deAlloc(this);
+      return;
     }
 
     /** Returns the current length of this string. */
     method int length() {
+      return length;
     }
 
     /** Returns the character at the j-th location of this string. */
     method char charAt(int j) {
+      if ( j > length) {
+        do Sys.error(1); // Argument error
+      }
+
+      return buf[j];
     }
 
     /** Sets the character at the j-th location of this string to c. */
     method void setCharAt(int j, char c) {
+      if(j > length) {
+        do Sys.error(1); // Argument error
+      }
+
+      let buf[j] = c;
+      return;
     }
 
     /** Appends c to this string's end and returns this string. */
     method String appendChar(char c) {
+      if((length + 1) > max) {
+        do Sys.error(1); // Argument error
+      }
+
+      let buf[length] = c;
+      let length = length + 1;
+
+      return this;
     }
 
     /** Erases the last character from this string. */
     method void eraseLastChar() {
+      if(length = 0) {
+        do Sys.error(1); // Argument error
+      }
+
+      let buf[length] = null;
+      let length = length - 1;
+      return;
     }
 
-    /** Returns the integer value of this string, 
+    /** Returns the integer value of this string,
      *  until a non-digit character is detected. */
     method int intValue() {
+      var int i, v, d;
+      var char c;
+      var bool flag;
+
+      let v = 0;
+      let d = 0;
+      let i = length - 1;
+      let flag = true;
+
+      while ((i > -1) & flag) {
+        let c = buf[i];
+        let i = i - 1;
+        if (c > 47 & c < 58 & d < 6) {
+          let v = v + ( (c - 48) * Math.pow(10, d) );
+          let d = d + 1;
+        } else {
+          let flag = false; // break;
+        }
+      }
+      if (buf[i+1] = 45) {
+        let v = -v;
+      }
+
+      return v;
     }
 
     /** Sets this string to hold a representation of the given value. */
     method void setInt(int val) {
+      var int n, v, i;
+      var Array arr;
+
+      let arr = Array.new(6); // max 5 length string because val < 32768
+      let v = Math.abs(val);
+      let i = 0;
+
+      while (v > 10) {
+        let n = Math.mod(v, 10);
+        let arr[i] = n + 48;
+        let i = i + 1;
+        let v = v / 10;
+      }
+
+      let length = 0; // reset this length
+      if (val < 0) {
+        do appendChar(45); // append '-' first
+      }
+
+      do appendChar(v + 48);
+      while (i > 0) {
+        let i = i - 1;
+        do appendChar(arr[i]);
+      }
+
+      return;
     }
 
     /** Returns the new line character. */
     function char newLine() {
+      return 128;
     }
 
     /** Returns the backspace character. */
     function char backSpace() {
+      return 129;
     }
 
     /** Returns the double quote (") character. */
     function char doubleQuote() {
+      return 34;
     }
 }

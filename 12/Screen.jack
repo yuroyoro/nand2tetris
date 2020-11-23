@@ -6,38 +6,398 @@
 /**
  * A library of functions for displaying graphics on the screen.
  * The Hack physical screen consists of 512 rows (indexed 0..511, top to bottom)
- * of 256 pixels each (indexed 0..255, left to right). The top left pixel on 
+ * of 256 pixels each (indexed 0..255, left to right). The top left pixel on
  * the screen is indexed (0,0).
  */
 class Screen {
+    static int screen;  // base address of screen
+    static Array bits;  // bit masks
+    static bool color;
 
     /** Initializes the Screen. */
     function void init() {
+      var int i, n;
+
+      let screen = 16384;
+      let color = true;
+
+      let i = 0;
+      let n = 1;
+      let bits = Array.new(16);
+      while (i < 16) {
+        let bits[i] = n;
+        let n = n + n;
+        let i = i + 1;
+      }
+
+      return;
     }
 
     /** Erases the entire screen. */
     function void clearScreen() {
+      var int i;
+      let i = 0;
+      while (i < 8192) {
+        let screen[i] = 0;
+        let i = i + 1;
+      }
+
+      return;
     }
 
     /** Sets the current color, to be used for all subsequent drawXXX commands.
      *  Black is represented by true, white by false. */
     function void setColor(boolean b) {
+      let color = b;
+      return;
+    }
+
+    function bool isValidPixel(int x, int y) {
+      return (x > 0 | x = 0) & (x < 512) & ( y > 0 | y = 0) & ( y < 255);
     }
 
     /** Draws the (x,y) pixel, using the current color. */
     function void drawPixel(int x, int y) {
+      var int w, addr, b, n;
+
+      if ( ~Screen.isValidPixel(x, y) ) {
+        do Sys.error(1); // Argument error
+      }
+
+      let n = x / 16;
+      let addr = (y * 32) + n;
+      let w = screen[addr];
+
+      let b = x - (n * 16);
+
+      if (color) {
+        let screen[addr] = screen[addr] | bits[b];
+      } else {
+        let screen[addr] = screen[addr] & ~bits[b];
+      }
+
+      return;
     }
 
     /** Draws a line from pixel (x1,y1) to pixel (x2,y2), using the current color. */
     function void drawLine(int x1, int y1, int x2, int y2) {
+      var int a, b, dx, dy, adyMinusbdx, absdy;
+
+      if ( ~Screen.isValidPixel(x1, y1) | ~Screen.isValidPixel(x2, y2)) {
+        do Sys.error(1); // Argument error
+      }
+
+      if (x1 = x2) {
+        if (y1 = y2) {
+          do Screen.drawPixel(x1, y1);
+
+          return;
+        }
+
+        do Screen.drawVerticalLine(x1, y1, y2);
+
+        return;
+      }
+
+      if (y1 = y2) {
+        do Screen.drawHorizontalLine(x1, x2, y1);
+
+        return;
+      }
+
+      if (x1 > x2) {
+        do Screen.drawLine(x2, y2, x1, y1);
+
+        return;
+      }
+
+      let a = 0;
+      let b = 0;
+      let dx = x2 - x1;
+      let dy = y2 - y1;
+      let adyMinusbdx = 0;
+
+      if (dy > 0) {
+        while ( (a < (dx + 1)) & (b < (dy + 1)) ) {
+          do Screen.drawPixel(x1 + a, y1 + b);
+
+          if (adyMinusbdx < 0) {
+            let a = a + 1;
+            let adyMinusbdx = adyMinusbdx + dy;
+          } else {
+            let b = b + 1;
+            let adyMinusbdx = adyMinusbdx - dx;
+          }
+        }
+      } else {
+        let absdy = Math.abs(dy);
+        while ( (a < (dx + 1)) & (b > (dy - 1)) ) {
+          do Screen.drawPixel(x1 + a, y1 - b);
+
+          if (adyMinusbdx < 0) {
+            let a = a + 1;
+            let adyMinusbdx = adyMinusbdx + absdy;
+          } else {
+            let b = b + 1;
+            let adyMinusbdx = adyMinusbdx - dx;
+          }
+        }
+      }
+
+      return;
+    }
+
+    function void drawVerticalLine(int x, int y1, int y2) {
+      var int addr1, addr2, mask, n, b;
+
+      if (y1 > y2) {
+        do Screen.drawVerticalLine(x, y2, y1);
+        return;
+      }
+
+      let n = x / 16;
+      let addr1 = (y1 * 32) + n;
+      let addr2 = (y2 * 32) + n;
+      let b = x - (n * 16);            // b = x1 % 16;
+      let mask = bits[b];
+
+      while (addr1 < addr2 + 1) {
+        if (color) {
+          let screen[addr1] = screen[addr1] | mask;
+        } else {
+          let screen[addr1] = screen[addr1] & ~mask;
+        }
+
+        let addr1 = addr1 + 32;
+      }
+
+      return;
+    }
+
+    function void drawHorizontalLine(int x1, int x2, int y) {
+      var int i, line, addr, mask, n1, b1, n2, b2;
+
+      if (x1 > x2) {
+        do Screen.drawHorizontalLine(x2, x1, y);
+        return;
+      }
+
+      let n1 = x1 / 16;
+      let b1 = x1 - (n1 * 16);            // b = x1 % 16;
+      let n2 = x2 / 16;
+      let b2 = x2 - (n2 * 16);            // b = x1 % 16;
+
+      let line = (y * 32);
+      let addr = line + n1;
+
+      if ( n1 = n2) {
+        let i = b1;
+        while ( i < b2 + 1 ) {
+          let mask = mask | bits[i];
+          let i = i + 1;
+        }
+
+        if (color) {
+          let screen[addr] = screen[addr] | mask;
+        } else {
+          let screen[addr] = screen[addr] & ~mask;
+        }
+
+        return;
+      }
+
+      // fill first word
+      let i = 15;
+      let mask = 0;
+      while ( i > b1 - 1) {
+        let mask = mask | bits[i];
+        let i = i - 1;
+      }
+
+      if (color) {
+        let screen[addr] = screen[addr] | mask;
+      } else {
+        let screen[addr] = screen[addr] & ~mask;
+      }
+
+      let i = n1 + 1;
+      while (i < n2) {
+        let addr = line + i;
+        let i = i + 1;
+
+        if (color) {
+          let screen[addr] = -1;
+        } else {
+          let screen[addr] = 0;
+        }
+      }
+
+      // fill last word
+      let addr = line + n2;
+      let i = 0;
+      let mask = 0;
+      while ( i < b2 + 1) {
+        let mask = mask | bits[i];
+        let i = i + 1;
+      }
+
+      if (color) {
+        let screen[addr] = screen[addr] | mask;
+      } else {
+        let screen[addr] = screen[addr] & ~mask;
+      }
+
+      return;
     }
 
     /** Draws a filled rectangle whose top left corner is (x1, y1)
      * and bottom right corner is (x2,y2), using the current color. */
     function void drawRectangle(int x1, int y1, int x2, int y2) {
+      var int i;
+
+      if ( ~Screen.isValidPixel(x1, y1) | ~Screen.isValidPixel(x2, y2)) {
+        do Sys.error(1); // Argument error
+      }
+
+      if (x1 = x2) {
+        if (y1 = y2) {
+          do Screen.drawPixel(x1, y1);
+
+          return;
+        }
+
+        do Screen.drawVerticalLine(x1, y1, y2);
+
+        return;
+      }
+
+      if (y1 = y2) {
+        do Screen.drawHorizontalLine(x1, x2, y1);
+
+        return;
+      }
+
+      if (x1 > x2) {
+        if (y1 > y2) {
+          do Screen.drawRectangle(x2, y2, x1, y1);
+
+          return;
+        }
+
+        do Screen.drawRectangle(x2, y1, x1, y2);
+
+        return;
+      }
+
+      if (y1 > y2) {
+        do Screen.drawRectangle(x1, y2, x2, y1);
+
+        return;
+      }
+
+      // x1 < x1 & y1 < y2
+
+      let i = y1;
+      while ( i < y2 + 1) {
+        do Screen.drawHorizontalLine(x1, x2, i);
+        let i = i + 1;
+      }
+
+      return;
     }
 
     /** Draws a filled circle of radius r<=181 around (x,y), using the current color. */
-    function void drawCircle(int x, int y, int r) {
+    function void drawCircle(int x0, int y0, int r) {
+      var int x, y, d, x_from, x_to, y_from, y_to;
+
+      if ( ~Screen.isValidPixel(x, y) | r < 0 | r > 181) {
+        do Sys.error(1); // Argument error
+      }
+
+      // Midpoint circle algorithm
+      //   https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
+      //   http://dencha.ojaru.jp/programs_07/pg_graphic_09a1.html
+
+      do Screen.drawHorizontalLine(x0 - r, x0 + r, y0);
+      do Screen.drawVerticalLine(x0, y0 - r, y0 + r);
+
+      let x = 0;
+      let y = r;
+      let d = 3 - (2 * r);
+
+      while ( x < y | x = y) {
+        let x_from = x0 - y;
+        let x_to   = x0 + y;
+
+        if (x_from < 0) {
+          let x_from = 0;
+        }
+        if (x_to > 511) {
+          let x_to = 511;
+        }
+
+        let y_from = y0 - x;
+        let y_to   = y0 + x;
+
+        if (y_from > -1) {
+          do Screen.drawHorizontalLine(x_from, x_to, y_from);
+        }
+        if (y_to < 255) {
+          do Screen.drawHorizontalLine(x_from, x_to, y_to);
+        }
+
+        if (d < 0) {
+          let d = d + (4 * x) + 6;
+
+          let x = x + 1;
+        } else {
+          let d = d + (4 * x) - (4 * y) + 10;
+
+          let x_from = x0 - x;
+          let x_to   = x0 + x;
+
+          if (x_from < 0) {
+            let x_from = 0;
+          }
+          if (x_to > 511) {
+            let x_to = 511;
+          }
+
+          let y_from = y0 - y;
+          let y_to   = y0 + y;
+
+          if (y_from > -1) {
+            do Screen.drawHorizontalLine(x_from, x_to, y_from);
+          }
+          if (y_to < 255) {
+            do Screen.drawHorizontalLine(x_from, x_to, y_to);
+          }
+
+          let x = x + 1;
+          let y = y - 1;
+        }
+      }
+
+      let x_from = x0 - x;
+      let x_to   = x0 + x;
+
+      if (x_from < 0) {
+        let x_from = 0;
+      }
+      if (x_to > 511) {
+        let x_to = 511;
+      }
+
+      let y_from = y0 - y;
+      let y_to   = y0 + y;
+
+      if (y_from > -1) {
+        do Screen.drawHorizontalLine(x_from, x_to, y_from);
+      }
+      if (y_to < 255) {
+        do Screen.drawHorizontalLine(x_from, x_to, y_to);
+      }
+
+      return;
     }
 }
